@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerita Rakyat Interaktif - Sulawesi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tone.js for audio synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <style>
+        :root {
+            --bg-grad-1: #ff9a9e;
+            --bg-grad-2: #fad0c4;
+            --bg-grad-3: #a1c4fd;
+            --bg-grad-4: #c2e9fb;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(-45deg, var(--bg-grad-1), var(--bg-grad-2), var(--bg-grad-3), var(--bg-grad-4));
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .story-text-container {
+            font-family: 'Merriweather', serif;
+        }
+
+        .fun-card {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.5em;
+            background-color: #f87171;
+            animation: blink 0.7s infinite;
+            margin-left: 4px;
+            vertical-align: bottom;
+            border-radius: 2px;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        .choices-container, .ai-container { opacity: 0; }
+        
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-block;
+            border-top: 3px solid #f472b6;
+            border-right: 3px solid transparent;
+            box-sizing: border-box;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7); display: flex; align-items: center;
+            justify-content: center; z-index: 1000; opacity: 0;
+            visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .keyword-input {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #1e293b;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .keyword-input:focus {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: #f472b6;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
+        }
+        .keyword-input::placeholder { color: rgba(30, 41, 59, 0.5); }
+
+        /* Map Styles */
+        #map-container { display: none; }
+        .map-province {
+            fill: rgba(255, 255, 255, 0.2);
+            stroke: rgba(255, 255, 255, 0.4);
+            stroke-width: 1;
+            transition: all 0.3s ease-in-out;
+        }
+        .map-province.active {
+            fill: rgba(251, 191, 36, 0.5); /* Yellow highlight */
+            stroke: #fbbf24;
+        }
+        .map-location {
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .map-location.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .map-location.active circle {
+            fill: #fbbf24;
+            stroke: #fff;
+            transform: scale(1.2);
+            transform-origin: center;
+        }
+        .map-text {
+            font-family: 'Nunito', sans-serif;
+            fill: #1e293b;
+            font-size: 14px;
+            font-weight: 900;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        .image-loading-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); display: flex; align-items: center;
+            justify-content: center; z-index: 10;
+        }
+
+        /* Fun Button Style */
+        .btn {
+            border: none;
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 900;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-green { background-image: linear-gradient(to right, #4ade80, #22c55e); }
+        .btn-pink { background-image: linear-gradient(to right, #f472b6, #ec4899); }
+        .btn-orange { background-image: linear-gradient(to right, #fb923c, #f97316); }
+        .btn-sky { background-image: linear-gradient(to right, #38bdf8, #0ea5e9); }
+        .btn-gray { background-image: linear-gradient(to right, #9ca3af, #6b7280); }
+        .btn:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .btn:active { transform: translateY(-1px) scale(1); }
+    </style>
+    <style>
+        /* Style untuk tombol narasi audio */
+        .audio-btn {
+            background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%; width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; cursor: pointer; transition: all 0.2s ease; flex-shrink: 0;
+        }
+        .audio-btn:hover { background: rgba(255, 255, 255, 0.4); transform: scale(1.1); }
+    </style>
+    <style>
+        /* Style untuk Animasi & Suara Alam */
+        .scene-fx-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; overflow: hidden; border-radius: 1rem;
+        }
+
+        /* Animasi Awan */
+        @keyframes cloud-move {
+            from { transform: translateX(-150%); }
+            to { transform: translateX(150%); }
+        }
+        .cloud {
+            position: absolute;
+            width: 200px; height: 60px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 100px;
+            animation-name: cloud-move;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+        .cloud::before, .cloud::after {
+            content: ''; position: absolute; background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+        }
+        .cloud::before { width: 100px; height: 80px; top: -40px; left: 25px; }
+        .cloud::after { width: 120px; height: 60px; top: -25px; right: 20px; }
+
+        /* Animasi Ombak */
+        @keyframes wave-move {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .wave {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 200%; height: 80px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-17,148.63-10.09,267.94,8.98,119.57,19.07,235.69,39.31,357.28,47.92V120H0V47.35C113.35,32.1,198.75,23.49,321.39,56.44Z" style="fill:rgba(255,255,255,0.4);"></path></svg>');
+            background-repeat: repeat-x;
+            animation: wave-move 15s linear infinite;
+        }
+        .wave.back {
+            animation-duration: 25s;
+            animation-direction: reverse;
+            opacity: 0.6;
+            bottom: -10px;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="container mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+        <main id="story-container" class="fun-card rounded-3xl shadow-lg p-6 sm:p-8 transition-all duration-500 lg:col-span-2">
+            <!-- Konten dimuat di sini -->
+        </main>
+
+        <aside id="map-container" class="hidden lg:block fun-card rounded-3xl p-4 fade-in-up">
+            <h3 class="text-center font-black text-xl mb-4 text-slate-700 uppercase tracking-wider">Peta Ajaib</h3>
+            <svg viewBox="0 0 200 300" id="interactive-map" xmlns="http://www.w3.org/2000/svg"></svg>
+        </aside>
+    </div>
+
+    <div id="info-modal" class="modal-overlay" onclick="hideInfo()">
+        <div class="fun-card rounded-2xl shadow-lg p-6 w-11/12 max-w-md mx-auto fade-in-up" onclick="event.stopPropagation()">
+            <h3 id="modal-title" class="text-3xl font-black mb-4 text-slate-800" style="font-family: 'Merriweather', serif;"></h3>
+            <p id="modal-description" class="text-slate-700 text-lg"></p>
+            <button onclick="hideInfo()" class="mt-6 w-full btn btn-orange">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        const storyContainer = document.getElementById('story-container');
+        const mapContainer = document.getElementById('map-container');
+        const mapSVG = document.getElementById('interactive-map');
+        let typingInterval;
+
+        // --- PENTING: Ganti dengan API Key Google AI Studio Anda yang valid ---
+        const API_KEY = "AIzaSyCCCY2pSxeRTLIhyXqsfVkB4lVGLPITdiU"; 
+
+        const membraneSynth = new Tone.MembraneSynth({pitchDecay: 0.1, volume: -5}).toDestination();
+        
+        // --- Sistem Suara Ketikan (Lebih Andal) ---
+        const typingSynth = new Tone.NoiseSynth({
+            noise: { type: 'brown' },
+            envelope: { attack: 0.005, decay: 0.05, sustain: 0 },
+            volume: -20
+        }).toDestination();
+
+        // Menggunakan Tone.Loop untuk suara ketikan yang terjadwal dan efisien
+        const typingLoop = new Tone.Loop(time => {
+            typingSynth.triggerAttack(time);
+        }, "16n");
+
+        function startTypingSound() {
+            Tone.start();
+            if (Tone.Transport.state !== 'started') {
+                Tone.Transport.start();
+            }
+            if (typingLoop.state !== 'started') {
+                 typingLoop.start(0);
+            }
+        }
+
+        function stopTypingSound() {
+            if (typingLoop.state === 'started') {
+                typingLoop.stop();
+            }
+        }
+
+        function playChoiceSound() { Tone.start(); membraneSynth.triggerAttackRelease("C2", "8n", Tone.now()); }
+
+        // --- Sistem Musik Dinamis ---
+        let currentMusic = null;
+
+        // Definisikan synth di luar loop untuk mencegah kebocoran memori (memory leak) dan meningkatkan performa.
+        const musicSynths = {
+            neutral: new Tone.FMSynth({ volume: -20 }).toDestination(),
+            tense: new Tone.AMSynth({ volume: -15 }).toDestination(),
+            happy: new Tone.Synth({ oscillator: { type: "pulse" }, volume: -18 }).toDestination(),
+            sad: new Tone.Synth({ envelope: { attack: 0.1, release: 1 }, volume: -22 }).toDestination(),
+            mysterious: new Tone.FMSynth({ modulationIndex: 15, harmonicity: 3, volume: -25 })
+        };
+        // Hubungkan efek reverb khusus untuk synth 'mysterious'
+        const mysteriousReverb = new Tone.Reverb({ decay: 4, wet: 0.6 }).toDestination();
+        musicSynths.mysterious.connect(mysteriousReverb);
+
+        const musicLoops = {
+            neutral: new Tone.Pattern((time, note) => { musicSynths.neutral.triggerAttackRelease(note, "8n", time); }, ["C4", "E4", "G4", "B4"], "upDown"),
+            tense: new Tone.Loop(time => { musicSynths.tense.triggerAttackRelease("C2", "1n", time); }, "1n"),
+            happy: new Tone.Pattern((time, note) => { musicSynths.happy.triggerAttackRelease(note, "16n", time); }, ["C5", "E5", "G5", "C6"], "randomWalk"),
+            sad: new Tone.Pattern((time, note) => { musicSynths.sad.triggerAttackRelease(note, "2n", time); }, ["C3", "Eb3", "G3"], "up"),
+            mysterious: new Tone.Loop(time => { musicSynths.mysterious.triggerAttackRelease("C#2", "2n", time); }, "2n")
+        };
+
+        function playBackgroundMusic(mood = 'neutral') {
+            Tone.start();
+            if (currentMusic && currentMusic.state === 'started') {
+                currentMusic.stop(0);
+            }
+            currentMusic = musicLoops[mood];
+            if (currentMusic && currentMusic.state !== 'started') {
+                currentMusic.start(0);
+            }
+            if (Tone.Transport.state !== 'started') {
+                Tone.Transport.start();
+            }
+        }
+
+        // --- Sistem Suara Alam (Ambience) ---
+        let currentAmbience = null;
+        const ambienceSynths = {
+            coast: new Tone.Noise({ type: 'pink', volume: -22, fadeOut: '2s' }),
+            mountain: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }, volume: -28 }).toDestination()
+        };
+        const coastFilter = new Tone.AutoFilter({ frequency: '8m', baseFrequency: 150, octaves: 4 }).toDestination();
+        ambienceSynths.coast.connect(coastFilter);
+
+        const ambienceLoops = {
+            coast: new Tone.Loop(time => {
+                ambienceSynths.coast.start(time).stop(time + 3);
+            }, "4s").set({ humanize: true }),
+            mountain: new Tone.Pattern((time, note) => {
+                ambienceSynths.mountain.triggerAttackRelease(note, '32n', time);
+            }, ['C6', 'E6', 'G6', 'A6'], 'random')
+        };
+        ambienceLoops.mountain.interval = '3s';
+
+        function playAmbience(type) {
+            if (currentAmbience && currentAmbience.state === 'started') {
+                currentAmbience.stop(0);
+            }
+            currentAmbience = ambienceLoops[type];
+            if (currentAmbience && currentAmbience.state !== 'started') {
+                currentAmbience.start(0);
+            }
+        }
+
+        function stopAllAmbience() {
+            if (currentAmbience && currentAmbience.state === 'started') {
+                currentAmbience.stop(0);
+            }
+        }
+
+        function stopAllMusic() {
+            if (currentMusic) {
+                if (currentMusic.state === 'started') currentMusic.stop(0);
+            }
+            if (Tone.Transport.state === 'started') {
+                Tone.Transport.stop();
+                Tone.Transport.cancel();
+            }
+            stopAllAmbience();
+        }
+        
+        // --- Narasi Audio (Text-to-Speech) ---
+        let indonesianVoice = null;
+        // Fungsi ini akan dipanggil ketika daftar suara browser sudah siap
+        speechSynthesis.onvoiceschanged = () => {
+            indonesianVoice = speechSynthesis.getVoices().find(voice => voice.lang === 'id-ID' || voice.name === 'Google Bahasa Indonesia');
+        };
+
+        function toggleNarrationAudio(text) {
+            const audioBtn = document.getElementById('play-audio-btn');
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel(); // Hentikan audio jika sedang diputar
+                if (audioBtn) audioBtn.innerHTML = '🔊';
+                return;
+            }
+            // Coba lagi muat suara jika belum ada saat pertama kali diklik
+            if (!indonesianVoice) {
+                // PERBAIKAN: Mencari suara dengan kriteria yang sama seperti di awal.
+                indonesianVoice = speechSynthesis.getVoices().find(voice => voice.lang === 'id-ID' || voice.name === 'Google Bahasa Indonesia');
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'id-ID';
+            utterance.rate = 0.9; // Kecepatan bicara sedikit lebih lambat untuk narasi
+            if (indonesianVoice) {
+                utterance.voice = indonesianVoice;
+            } else {
+                // Tambahkan log jika suara spesifik tidak ditemukan, agar kita tahu ia menggunakan suara default.
+                console.warn("Suara narator Bahasa Indonesia tidak ditemukan. Menggunakan suara default browser.");
+            }
+
+            utterance.onstart = () => { if (audioBtn) audioBtn.innerHTML = '⏹️'; };
+            utterance.onend = () => { if (audioBtn) audioBtn.innerHTML = '🔊'; };
+            utterance.onerror = (event) => { 
+                console.error("Terjadi kesalahan pada narasi audio (Speech Synthesis):", event);
+                if (audioBtn) audioBtn.innerHTML = '🔊'; 
+            };
+            speechSynthesis.speak(utterance);
+        }
+
+        const allClassicStories = {
+            mandar: {
+                title: "Asal Mula Nama Mandar",
+                province: 'mandar',
+                mapData: {
+                    provincePath: `<path class="map-province active" d="M75,130 L125,130 C120,150 100,180 110,220 L70,200 C60,170 60,150 75,130 Z" />`,
+                    locations: [
+                        { id: 'mountain', cx: 110, cy: 150, text: 'Gunung' },
+                        { id: 'coast', cx: 80, cy: 190, text: 'Pesisir' }
+                    ]
+                },
+                'start': { mood: 'neutral', location: 'all', ambience: 'mountain', animation: 'clouds', illustration: 'https://terrapuri.com/rooms_villas_rumah_pengkalan_kubu_10.jpg', narration: `Dahulu kala di tanah Sulawesi, terdapat tujuh kerajaan di pesisir (Pitu Ba'bana Binanga) dan tujuh kerajaan di pegunungan (Pitu Ulunna Salu). Namun, kedua kelompok kerajaan ini sering berselisih paham dan berperang.`, choices: [ { text: "Cari jalan damai untuk persatuan.", nextScene: 'seek_peace' }, { text: "Siapkan pasukan untuk perang penentuan.", nextScene: 'prepare_war' } ], interactiveObjects: [{ x: '20%', y: '75%', title: 'Rumah Boyang', description: 'Rumah Adat Mandar atau Boyang adalah rumah panggung yang menjadi ciri khas arsitektur suku Mandar. Strukturnya yang tinggi melambangkan penghormatan terhadap alam dan leluhur.' }] },
+                'seek_peace': { mood: 'neutral', location: 'coast', ambience: 'coast', animation: 'waves', illustration: 'https://ik.imagekit.io/goodid/gnfi/uploads/articles/large-299657858-757456268829786-5350337831560740287-n-ba7f1857d43558731f96fe944707a288.jpg', narration: `Para pemimpin yang bijaksana dari kedua belah pihak setuju untuk bertemu. Mereka mengadakan musyawarah akbar di sebuah dataran untuk mencari solusi atas konflik yang berkepanjangan. Apa yang akan mereka lakukan?`, choices: [ { text: "Mengusulkan sebuah ikrar persatuan.", nextScene: 'oath' }, { text: "Meminta upeti dari kerajaan yang lebih lemah.", nextScene: 'demand_tribute' } ], interactiveObjects: [{ x: '80%', y: '70%', title: 'Perahu Sandeq', description: 'Sandeq adalah perahu layar bercadik tradisional yang sangat cepat dari Mandar. Namanya berarti "runcing", dan perahu ini adalah simbol kehebatan maritim suku Mandar.' }] },
+                'prepare_war': { mood: 'tense', location: 'mountain', ambience: 'mountain', animation: 'clouds', illustration: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgZg3QEM6vC-2NZuSzheq0tn8RX9pkBB_nwc3pA_nh7Wha5OJbT1te19SLoLkNVU7guZQAzQ-vqFLh4YQ9M6Lwp3zogz9Bqb-D0pl4LR41icVY3xKJo6kx7cMJaLvEaRiaTaxkWqnKH5-E6/w256-h256-p-k-no-nu/1667746342100158-0.png', narration: `Peperangan besar pun meletus. Pertumpahan darah terjadi di mana-mana, membawa penderitaan bagi rakyat. Di tengah kekacauan, seorang pemimpin bijak menyerukan agar pertikaian segera diakhiri.`, choices: [ { text: "Dengarkan seruan damai dan ajak bertemu.", nextScene: 'seek_peace' }, { text: "Teruskan perang hingga meraih kemenangan mutlak.", nextScene: 'end_war_tragedy' } ], interactiveObjects: [{ x: '70%', y: '60%', title: 'BADIK', description: 'Badik adalah senjata tradisional mandar yang biasa digunakan untuk upacara adat,pertahanan diri, bahkan sebagai alat untuk membela harga diri atau menjaga kehormatan keluarga.Badik terbuat dari baja dan beberapa canpuran besi . Untuk pegangan serata sarungnya terbuat dari kayu biasa dan dihiasi beberapa emas atau perak   sehingga ukurannya itu 21  sampai 31 sentimeter.  ' }] },
+                'oath': { mood: 'happy', location: 'all', ambience: 'coast', animation: 'all', illustration: 'https://tse3.mm.bing.net/th/id/OIP.p07pIgW0aTknlMoSNuArVQAAAA?rs=1&pid=ImgDetMain&o=7&rm=3', narration: `Dalam musyawarah, mereka bersepakat untuk mengikat sebuah ikrar suci yang dikenal sebagai "Sipamandar", yang artinya saling menjaga dan menguatkan. Dari ikrar inilah lahir nama "Mandar", sebagai simbol persatuan dan persaudaraan.`,interactiveObjects: [{ x: '80%', y: '70%', title: 'Suku Mandar', description: 'Suku Mandar adalah salah satu kelompok etnis yang berasal dari wilayah pesisir dan pegunungan di Sulawesi Barat, Indonesia. Mereka dikenal sebagai pelaut ulung dan penjaga tradisi maritim yang kaya. ' }] , isEnd: true, endingTitle: "AKHIR: Lahirnya Persatuan Mandar" }, 
+                'demand_tribute': { mood: 'sad', location: 'coast', ambience: 'coast', animation: '', illustration: 'https://th.bing.com/th/id/OIP.52e5I0wkrTk0WR3w7D1PFQHaL2?w=115&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3', narration: `Tuntutan upeti justru menyulut amarah baru. Musyawarah gagal total, dan konflik menjadi semakin dalam. Kerajaan-kerajaan itu pun tetap terpecah belah, melemahkan tanah mereka sendiri.`,interactiveObjects: [{ x: '80%', y: '70%', title: 'Pattuqduq Towaine', description: 'Nama Pattuqduq Towaine secara harfiah berarti “langkah pelan perempuan,” merujuk pada gerakan anggun wanita saat mengenakan pakaian ini dalam prosesi adat seperti pernikahan dan tarian tradisional.' }], isEnd: true, endingTitle: "AKHIR: Kerajaan yang Terpecah" },
+                'end_war_tragedy': { mood: 'sad', location: 'mountain', ambience: 'mountain', animation: 'clouds', illustration: 'https://media.arkadia.me/v2/articles/budiprathama/K33qfTpSYsSTdKsrZLHgkGo97H1Qvuna.png', narration: `Nafsu untuk berkuasa mengalahkan akal sehat. Perang terus berlanjut hingga beberapa generasi, menghancurkan peradaban dan budaya yang telah dibangun. Kisah mereka pun hilang ditelan waktu.`, interactiveObjects: [{ x: '80%', y: '70%', title: 'Gongga Lima', description: 'Gongga Lima terdiri dari kata ‘gongga’ dan ‘lima’. Gongga adalah alat itu sendiri, sementara ‘lima’ mewakili jumlah jari pada satu tangan. Gongga Lima dimainkan dengan orang-orang Mandar khususnya di kecamatan Balanipa, mirip dengan Parappasa, instrument dari Gowa, Sulawesi Selatan. ' }],isEnd: true, endingTitle: "AKHIR: Tragedi Tanah yang Hilang" }
+            },
+            la_dana: {
+                title: "La Dana dan Kerbaunya",
+                province: 'la_dana',
+                mapData: {
+                    provincePath: `<path class="map-province active" d="M100,5 C130,10 145,30 150,60 C155,90 140,120 125,130 L75,130 C70,110 70,50 100,5 Z" />`,
+                    locations: [
+                        { id: 'poso', cx: 110, cy: 100, text: 'Toraja' }
+                    ]
+                },
+                'start': { mood: 'tense', location: 'poso', ambience: 'mountain', illustration: 'https://th.bing.com/th/id/OIP.-K9DWFanwA1ofcejhlGuAwHaE6?w=271&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3', narration: `Di sebuah desa di Sulawesi Tengah, hiduplah seorang pemuda cerdik bernama La Dana. Suatu hari, seorang saudagar kaya yang sombong menantangnya adu kerbau. Kerbau milik saudagar sangat besar, sementara kerbau La Dana kecil dan kurus.`, choices: [{ text: "Terima tantangan dengan akal.", nextScene: 'trick' }, { text: "Tolak karena takut kalah.", nextScene: 'refuse' }], interactiveObjects: [{ x: '75%', y: '50%', title: 'Kerbau Belang', description: 'Di beberapa daerah di Sulawesi, kerbau, terutama yang belang (Tedong Bonga), dianggap sebagai hewan yang sangat berharga dan simbol status sosial, sering digunakan dalam upacara adat.' }] },
+                'trick': { mood: 'neutral', location: 'poso', ambience: 'mountain', illustration: 'https://www.murnis.com/murnis_wp/wp-content/uploads/2016/11/toraja_sword-1.jpg', narration: `La Dana membiarkan kerbaunya kelaparan selama tiga hari. Tepat sebelum pertarungan, ia mengikat pisau tajam di moncong kerbaunya. Saat dilepas, kerbau kecil itu berlari ke arah kerbau besar, mengira perutnya adalah induknya yang ingin ia susui.`, choices: [{ text: "Saksikan hasil dari siasat cerdik.", nextScene: 'win' }] , interactiveObjects: [{ x: '75%', y: '50%', title: 'Dua Lalan', description: 'Pedang ini berasal dari suku Toraja dan digunakan baik pada masa perang maupun untuk seremonial penyembelihan kerbau. Oleh karena itu namanya Dua Lalan (yang berarti "tujuan ganda") .' }] },
+                'refuse': { mood: 'sad', location: 'poso', ambience: 'mountain', illustration: 'https://as1.ftcdn.net/v2/jpg/03/05/43/34/1000_F_305433428_jmpFNj917AzPmRW3AJ2fJyY0aZrkutkT.jpg', narration: `La Dana menolak tantangan itu. Sejak saat itu, ia dicemooh sebagai pengecut dan kehilangan reputasinya sebagai pemuda yang cerdik. Ia menyesali keputusannya yang tidak percaya pada kekuatan akalnya sendiri.`, isEnd: true, endingTitle: "AKHIR: Hilangnya Kehormatan" , interactiveObjects: [{ x: '75%', y: '50%', title: 'Rumah Tongkonan', description: ' Rumah Adat Tongkonan memiliki bentuk rumah panggung persegi panjang dengan atap menyerupai perahu menggunakan buritan. Namun, dengan menyamakan atap rumah adat Toraja ini dengan tanduk kerbau.' }] },
+                'win': { mood: 'happy', location: 'poso', ambience: 'mountain', illustration: 'https://asset.kompas.com/data/photo/2015/01/26/1451113potongg780x390.jpg', narration: `Kerbau besar itu pun tewas tertusuk pisau. La Dana memenangkan pertarungan dan hadiah besar. Kemenangannya membuktikan bahwa kecerdikan dan akal dapat mengalahkan kekuatan fisik yang besar sekalipun.`, isEnd: true, endingTitle: "AKHIR: Akal Mengalahkan Kekuatan",interactiveObjects: [{ x: '75%', y: '50%', title: 'Prosesi Rambu Solo', description: ' Prosesi Rambu Solo dianggap sangat penting oleh masyarakat Tana Toraja. Alasannya, prosesi Rambu Solo yang sempurna akan menentukan posisi arwah orang yang meninggal, apakah sebagai bombo (arwah gentayangan), to-membali puang (arwah yang mencapai tingkat dewa), atau deata (arwah yang menjadi dewa pelindung).' }] },
+            },
+            sawerigading: {
+                title: "Legenda Sawerigading",
+                province: 'sawerigading',
+                mapData: {
+                    provincePath: `<path class="map-province active" d="M70,200 L110,220 C100,250 90,280 70,295 C50,290 30,285 20,260 C30,230 50,210 70,200 Z" />`,
+                    locations: [
+                        { id: 'luwu', cx: 80, cy: 240, text: 'Luwu' },
+                        { id: 'tiongkok', cx: 140, cy: 50, text: 'Tiongkok' }
+                    ]
+                },
+                'start': { mood: 'sad', location: 'luwu', ambience: 'coast', animation: '', illustration: 'https://mmc.tirto.id/image/2018/10/03/sawerigading--mild--nadya_ratio-9x16.jpg', narration: `Sawerigading, pangeran dari Kerajaan Luwu, jatuh cinta pada saudari kembarnya, We Tenriabeng. Cinta ini dianggap tabu oleh adat dan para dewa. Para tetua kerajaan dengan tegas melarang hubungan mereka.`, choices: [{ text: "Menentang adat demi cinta.", nextScene: 'defy' }, { text: "Menerima takdir dan mencari jalan lain.", nextScene: 'accept' }], interactiveObjects: [{ x: '15%', y: '20%', title: 'I La Galigo', description: 'Kisah Sawerigading adalah bagian dari I La Galigo, sebuah karya sastra epik terpanjang di dunia dari peradaban Bugis. Naskahnya diakui sebagai "Memory of the World" oleh UNESCO.' }] },
+                'defy': { mood: 'tense', location: 'luwu', ambience: 'coast', animation: '', illustration: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi2ox6mg0Mb9Ajg8Lb7GDAVQqU4rY47OSb_0VTcddiTj2wvtYj1F_PQcTGpehPWd_JMuWS3GoPR5HI4ZJ1WNNPOJNAxKIVwvoFhf7gwI-wOX7MgmGhAfUOsei1oCPxNfzceoS4Pb76ZiS8/s364/1578880412729902-0.png', narration: `Tindakannya menentang adat mendatangkan malapetaka. Kerajaan dilanda bencana, dan para dewa menunjukkan kemurkaan mereka. Sawerigading sadar bahwa cintanya yang egois membawa kehancuran bagi rakyatnya.`, choices: [{ text: "Menyesal dan mencari penebusan.", nextScene: 'accept' }] ,interactiveObjects: [{ x: '15%', y: '20%', title: 'FunFact', description: 'Sawerigading adalah tokoh utama dalam I La Galigo, salah satu karya sastra terpanjang di dunia—bahkan lebih panjang dari Mahabharata! Epos ini terdiri dari ribuan halaman naskah lontara Bugis.' }] },
+                'accept': { mood: 'neutral', location: 'luwu', ambience: 'coast', animation: '', illustration: 'https://th.bing.com/th/id/OIP.rg2iPmzA3UyCR5Y59gNC-AHaFj?w=241&h=181&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3', narration: `We Tenriabeng, dengan bijaksana, memberitahu Sawerigading tentang seorang putri di Tiongkok yang berparas sama dengannya. Ia meyakinkan Sawerigading untuk berlayar ke sana dan menemukan takdir sejatinya.`, choices: [{ text: "Membangun kapal dan memulai pelayaran.", nextScene: 'sail' }, { text: "Tetap tinggal dalam kesedihan.", nextScene: 'stay' }] ,interactiveObjects: [{ x: '15%', y: '20%', title: 'Saoraja', description: 'Rumah adat suku Bugis disebut Saoraja atau Salassa, yang berarti "rumah besar" dan biasanya dihuni oleh bangsawan. Rumah ini berbentuk panggung dengan tiga bagian utama—kolong, ruang tengah, dan loteng—yang mencerminkan filosofi kosmologi Bugis tentang dunia bawah, tengah, dan atas. Dibangun tanpa paku, Saoraja mencerminkan keahlian tukang kayu tradisional serta nilai spiritual dan sosial masyarakat Bugis, menjadikannya simbol status, kehormatan, dan keterhubungan dengan alam dan leluhur.' }] },
+                'sail': { mood: 'happy', location: 'tiongkok', ambience: 'coast', animation: 'waves', illustration: 'https://explore.makassar.go.id/wp-content/uploads/2023/05/Kapal-Pinisi.jpg', narration: `Setelah melewati badai dan rintangan di lautan luas, Sawerigading tiba di Tiongkok. Ia bertemu sang putri, menikahinya, dan menjadi raja yang agung. Kisahnya menjadi cikal bakal para pemimpin di tanah Bugis.`, isEnd: true, endingTitle: "AKHIR: Takdir yang Terpenuhi", interactiveObjects: [{ x: '50%', y: '65%', title: 'Kapal Pinisi', description: 'Orang Bugis-Makassar dikenal sebagai pembuat kapal Pinisi yang tangguh. Kapal kayu tradisional ini telah mengarungi samudra selama berabad-abad dan merupakan bukti kehebatan maritim mereka.' }] },
+                'stay': { mood: 'sad', location: 'luwu', ambience: 'coast', animation: '', illustration: 'https://th.bing.com/th/id/OIP.oykELjLjyFYwMj-SldZqGwHaE8?w=206&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3', narration: `Sawerigading tidak mampu meninggalkan Luwu dan cintanya. Ia hidup dalam penyesalan, dan kerajaannya perlahan kehilangan berkat dewata, hingga akhirnya lenyap ditelan zaman.`, isEnd: true, endingTitle: "AKHIR: Kerajaan yang Hilang",interactiveObjects: [{ x: '15%', y: '20%', title: 'Makam Lokkoe', description: 'Lokasi ini merupakan situs pemakaman para raja dan bangsawan Kerajaan Luwu, termasuk tokoh legendaris Sawerigading. Makam ini bukan hanya tempat ziarah budaya, tapi juga simbol kuat warisan Bugis yang masih dijaga hingga kini' }] },
+            }
+        };
+        
+        const mapInfoData = {
+            'mandar': {
+                'mountain': { title: 'Pegunungan Mandar', description: 'Kawasan pegunungan di Sulawesi Barat (Ulunna Salu) adalah hulu dari banyak sungai dan pusat dari beberapa kerajaan kuno yang bersekutu.' },
+                'coast': { title: 'Pesisir Mandar', description: 'Wilayah pesisir (Ba\'bana Binanga) adalah rumah bagi para pelaut ulung suku Mandar, yang terkenal dengan perahu Sandeq mereka.' }
+            },
+            'la_dana': {
+                'poso': { title: 'Tana Toraja', description: 'Kisah La Dana berasal dari daerah Toraja di Sulawesi Selatan, sebuah wilayah yang kaya akan budaya, sejarah dan cerita rakyat yang unik.' }
+            },
+            'sawerigading': {
+                'luwu': { title: 'Kerajaan Luwu', description: 'Luwu di Sulawesi Selatan adalah salah satu kerajaan tertua dalam sejarah Bugis dan dianggap sebagai titik awal dari epos I La Galigo.' },
+                'tiongkok': { title: 'Negeri Tiongkok', description: 'Dalam legenda, Sawerigading berlayar ke Tiongkok (Taranati). Ini melambangkan luasnya jangkauan pelayaran dan perdagangan maritim orang Bugis di masa lampau.' }
+            }
+        };
+
+        let storyHistory = [];
+        let currentStoryKey = null;
+
+        function typeWriter(text, elementId, onComplete) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            let i = 0;
+            el.innerHTML = '';
+            if (typingInterval) clearInterval(typingInterval);
+            
+            startTypingSound(); // Mulai suara ketikan sekali di awal
+
+            typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    el.innerHTML += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                    stopTypingSound(); // PENTING: Hentikan suara ketikan setelah selesai
+                    const cursor = el.nextElementSibling;
+                    if (cursor && cursor.classList.contains('typing-cursor')) {
+                        cursor.style.display = 'none';
+                    }
+                    if (onComplete) onComplete();
+                }
+            }, 40);
+        }
+        
+        function updateMap(storyKey, locationKey) {
+            const mapData = allClassicStories[storyKey].mapData;
+            if (!mapData) return;
+
+            mapSVG.innerHTML = mapData.provincePath;
+
+            mapData.locations.forEach(loc => {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('id', `map-${loc.id}-group`);
+                group.setAttribute('class', 'map-location');
+                group.setAttribute('onclick', `showMapInfo('${storyKey}', '${loc.id}')`);
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', loc.cx);
+                circle.setAttribute('cy', loc.cy);
+                circle.setAttribute('r', 8);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', loc.cx);
+                text.setAttribute('y', loc.cy - 15);
+                text.setAttribute('class', 'map-text');
+                text.textContent = loc.text;
+
+                group.appendChild(circle);
+                group.appendChild(text);
+                mapSVG.appendChild(group);
+            });
+
+            if (locationKey === 'all') {
+                mapData.locations.forEach(loc => document.getElementById(`map-${loc.id}-group`).classList.add('visible', 'active'));
+            } else if (locationKey) {
+                const activeLocation = document.getElementById(`map-${locationKey}-group`);
+                if (activeLocation) activeLocation.classList.add('visible', 'active');
+            }
+        }
+
+        function renderAnimation(type) {
+            if (type === 'waves') {
+                return `
+                    <div class="wave"></div>
+                    <div class="wave back"></div>
+                `;
+            }
+            if (type === 'clouds') {
+                return `
+                    <div class="cloud" style="top: 10%; animation-duration: 50s; left: -250px;"></div>
+                    <div class="cloud" style="top: 25%; animation-duration: 35s; animation-delay: -5s; transform: scale(0.7); left: -250px;"></div>
+                `;
+            }
+            return '';
+        }
+
+        function renderScene(sceneData, storyType, sceneKey) {
+            if (storyType === 'classic') {
+                mapContainer.style.display = 'block';
+                updateMap(currentStoryKey, sceneData.location);
+                playBackgroundMusic(sceneData.mood);
+                playAmbience(sceneData.ambience);
+                if(sceneData.isEnd) {
+                    saveProgress(currentStoryKey, sceneKey);
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                playBackgroundMusic('mysterious');
+            }
+
+            let imageContainerProps = '';
+            if (sceneData.interactiveObjects && sceneData.interactiveObjects.length > 0) {
+                const firstObject = sceneData.interactiveObjects[0];
+                const title = JSON.stringify(firstObject.title);
+                const description = JSON.stringify(firstObject.description);
+                imageContainerProps = `onclick='showInfo(${title}, ${description})' class="relative mb-6 rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 cursor-pointer"`;
+            } else {
+                imageContainerProps = `class="relative mb-6 rounded-2xl overflow-hidden shadow-lg border-2 border-white/20"`;
+            }
+
+            let choicesHtml = '';
+            if (sceneData.isEnd) {
+                choicesHtml = `<button class="w-full btn btn-green" onclick="renderStartScreen()">Kembali ke Menu Utama</button>`;
+            } else {
+                if (storyType === 'ai') {
+                    // Tambahkan class 'choice-btn' dan 'disabled' styling untuk state management yang lebih baik
+                    choicesHtml = sceneData.choices.map((choice, index) => `<button class="choice-btn w-full text-left bg-white/20 hover:bg-white/30 text-slate-800 font-bold py-3 px-4 border border-white/30 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" onclick="makeAiChoice(${index})">${choice.text}</button>`).join('');
+                } else {
+                    choicesHtml = sceneData.choices.map(choice => `<button class="w-full text-left bg-white/20 hover:bg-white/30 text-slate-800 font-bold py-3 px-4 border border-white/30 rounded-lg" onclick="makeClassicChoice('${choice.nextScene}')">${choice.text}</button>`).join('');
+                }
+                
+                if (storyType === 'ai') {
+                    const narrationForImage = JSON.stringify(sceneData.narration);
+                    choicesHtml += `<button id="generate-image-btn" class="mt-4 w-full bg-yellow-400 hover:bg-yellow-500 text-slate-800 font-black py-3 px-4 rounded-lg flex items-center justify-center gap-2" onclick='generateAiIllustration(${narrationForImage})'>🎨 Buat Ilustrasi Adegan Ini</button>`;
+                }
+                choicesHtml += `<button class="mt-4 w-full text-center text-slate-600 hover:text-slate-800 font-bold" onclick="renderStartScreen()">Kembali ke Awal</button>`;
+            }
+
+            storyContainer.innerHTML = `
+                <div class="fade-in-up">
+                    <div id="image-container" ${imageContainerProps}>
+                        <img id="scene-illustration" src="${sceneData.illustration || 'https://placehold.co/800x400/a1c4fd/1e293b?text=Imajinasi+AI'}" alt="Ilustrasi cerita" class="w-full h-auto object-cover transition-opacity duration-500">
+                        <div class="scene-fx-overlay">
+                            ${renderAnimation(sceneData.animation)}
+                        </div>
+                    </div>
+                    ${sceneData.endingTitle ? `<h2 class="text-3xl font-black text-center mb-4 text-slate-800">${sceneData.endingTitle}</h2>` : ''}
+                    <div class="mb-6 story-text-container text-lg md:text-xl leading-relaxed text-slate-700 flex items-start gap-4">
+                        <div class="flex-grow">
+                           <p id="narration-text"></p><span class="typing-cursor"></span>
+                        </div>
+                        <button id="play-audio-btn" class="audio-btn hidden" onclick='toggleNarrationAudio(${JSON.stringify(sceneData.narration)})'>🔊</button>
+                    </div>
+                    <div class="choices-container space-y-3 mt-6">${choicesHtml}</div>
+                </div>
+            `;
+            
+            typeWriter(sceneData.narration, 'narration-text', () => {
+                const choicesContainer = document.querySelector('.choices-container');
+                if(choicesContainer) { choicesContainer.classList.add('fade-in-up'); choicesContainer.style.opacity = 1; }
+                
+                // Tampilkan tombol audio setelah teks selesai diketik
+                const audioBtn = document.getElementById('play-audio-btn');
+                if(audioBtn) {
+                    audioBtn.classList.remove('hidden');
+                    audioBtn.classList.add('fade-in-up');
+                }
+            });
+        }
+
+        function makeClassicChoice(nextSceneKey) { playChoiceSound(); speechSynthesis.cancel(); renderScene(allClassicStories[currentStoryKey][nextSceneKey], 'classic', nextSceneKey); }
+        function makeAiChoice(choiceIndex) { playChoiceSound(); speechSynthesis.cancel(); const currentScene = storyHistory[storyHistory.length - 1]; const choice = currentScene.choices[choiceIndex]; storyHistory.push({ narration: `Kemudian, aku memilih untuk ${choice.text}.` }); generateAiScene(false); }
+
+        function renderStartScreen() {
+            stopAllMusic();
+            storyHistory = [];
+            currentStoryKey = null;
+            mapContainer.style.display = 'none';
+            storyContainer.classList.remove('lg:col-span-2');
+            storyContainer.classList.add('lg:col-span-3');
+            storyContainer.innerHTML = `
+                <div class="text-center fade-in-up">
+                    <h1 class="text-4xl md:text-6xl font-black text-slate-800" style="font-family: 'Nunito', sans-serif;">Petualangan Cerita Rakyat</h1>
+                    <p class="text-xl text-slate-600 mt-4 mb-8">Pilih legenda seru di bawah ini, atau buat ceritamu sendiri!</p>
+                    <div class="space-y-4">
+                        <button class="w-full btn btn-green" onclick="startClassicStory('mandar')">🗺️ ${allClassicStories.mandar.title}</button>
+                        <button class="w-full btn btn-sky" onclick="startClassicStory('la_dana')">🐃 ${allClassicStories.la_dana.title}</button>
+                        <button class="w-full btn btn-orange" onclick="startClassicStory('sawerigading')">⛵️ ${allClassicStories.sawerigading.title}</button>
+                        <hr class="border-white/20 my-2">
+                        <button class="w-full btn btn-pink" onclick="showAiCreator()">✨ Ciptakan Cerita Ajaibmu</button>
+                        <button class="w-full btn btn-gray" onclick="renderGallery()">🏆 Galeri Cerita</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function startClassicStory(storyKey) { 
+            speechSynthesis.cancel(); // Hentikan audio dari adegan sebelumnya
+            playChoiceSound(); 
+            currentStoryKey = storyKey;
+            storyContainer.classList.remove('lg:col-span-3'); 
+            storyContainer.classList.add('lg:col-span-2'); 
+            renderScene(allClassicStories[storyKey]['start'], 'classic', 'start'); 
+        }
+        
+        function showAiCreator() {
+            speechSynthesis.cancel(); // Hentikan audio dari adegan sebelumnya
+            playChoiceSound();
+            mapContainer.style.display = 'none';
+            storyContainer.classList.remove('lg:col-span-2');
+            storyContainer.classList.add('lg:col-span-3');
+            storyContainer.innerHTML = `
+                <div class="text-center fade-in-up">
+                    <h1 class="text-4xl md:text-6xl font-black text-slate-800">Generator Legenda</h1>
+                    <p class="text-xl text-slate-600 mt-4 mb-8">Ketik tiga ide ajaibmu di bawah ini!</p>
+                    <div class="space-y-4 mb-6">
+                        <input id="keyword1" class="keyword-input w-full p-3 rounded-full text-center" placeholder="Contoh: Kura-kura terbang">
+                        <input id="keyword2" class="keyword-input w-full p-3 rounded-full text-center" placeholder="Contoh: Hutan permen">
+                        <input id="keyword3" class="keyword-input w-full p-3 rounded-full text-center" placeholder="Contoh: Tongkat pelangi">
+                    </div>
+                    <button id="generate-story-btn" class="btn btn-pink" onclick="generateAiScene(true)">Buat Cerita!</button>
+                    <button class="mt-4 w-full text-center text-slate-600 hover:text-slate-800 font-bold" onclick="renderStartScreen()">Kembali</button>
+                </div>
+            `;
+            document.getElementById('generate-story-btn').onclick = () => { playChoiceSound(); generateAiScene(true); };
+        }
+
+        async function generateAiScene(isFirstScene) { 
+            speechSynthesis.cancel(); // Hentikan audio dari adegan sebelumnya
+            let userQuery; 
+            if (isFirstScene) { 
+                const kw1 = document.getElementById('keyword1').value || 'Nelayan tua'; 
+                const kw2 = document.getElementById('keyword2').value || 'Ikan emas ajaib'; 
+                const kw3 = document.getElementById('keyword3').value || 'Tsunami besar'; 
+                userQuery = `Buat paragraf pembuka untuk sebuah cerita rakyat Indonesia dari kata kunci: "${kw1}", "${kw2}", dan "${kw3}".`; 
+            } else { 
+                const context = storyHistory.map(s => s.narration).join(' '); 
+                userQuery = `Lanjutkan cerita ini: "${context}". Berikan paragraf kelanjutannya.`; 
+            } 
+            storyContainer.classList.remove('lg:col-span-2'); 
+            storyContainer.classList.add('lg:col-span-3'); 
+            if (isFirstScene) { 
+                const btn = document.getElementById('generate-story-btn'); 
+                if (btn) btn.disabled = true; 
+            } 
+            storyContainer.innerHTML = `<div class="text-center p-4"><div class="spinner"></div><p class="mt-4 text-slate-600 text-lg">${isFirstScene ? 'AI sedang meracik legenda...' : 'AI melanjutkan petualangan...'}</p></div>`; 
+            if (API_KEY === "MASUKKAN_API_KEY_ANDA_DI_SINI") { storyContainer.innerHTML = `<div class="p-4 bg-red-500/80 rounded-lg border border-red-400 text-center fade-in-up"><p class="text-xl mb-2 font-bold">API Key Belum Diatur!</p><p>Silakan masukkan API Key Google AI Anda di dalam kode JavaScript untuk menggunakan fitur ini.</p><button class="mt-4 bg-white/20 hover:bg-white/40 text-white font-bold py-2 px-4 rounded-lg" onclick="showAiCreator()">Kembali</button></div>`; return; }
+            const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`; 
+            const systemPrompt = `Anda adalah API JSON yang berfungsi sebagai pendongeng. JANGAN memberikan teks pembuka atau penutup. Respons Anda HARUS SELALU berupa objek JSON yang valid dan dapat di-parse, tanpa pengecualian. Objek JSON harus memiliki DUA properti: sebuah string 'narration', dan sebuah array 'choices'. Array 'choices' harus berisi TEPAT DUA objek, di mana setiap objek memiliki satu properti string 'text'. Contoh format yang BENAR: {"narration": "Sang pangeran tiba di tepi hutan.", "choices": [{"text": "Masuk ke dalam hutan."}, {"text": "Berbalik arah."}]}`;
+            const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, generationConfig: { responseMimeType: "application/json" } }; 
+            try { 
+                const response = await fetch(textApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); 
+                if (!response.ok) throw new Error(`API request failed: ${response.status}`); 
+                const result = await response.json(); 
+                let jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (jsonString.startsWith("```json")) {
+                    jsonString = jsonString.substring(7, jsonString.length - 3).trim();
+                } else if (jsonString.startsWith("```")) {
+                    jsonString = jsonString.substring(3, jsonString.length - 3).trim();
+                }
+                const newScene = JSON.parse(jsonString); 
+                if (!newScene.narration || !newScene.choices || !Array.isArray(newScene.choices) || newScene.choices.length < 2) {
+                    console.error("Invalid JSON structure received:", jsonString);
+                    throw new Error("Struktur JSON dari AI tidak valid.");
+                }
+                if (isFirstScene) playBackgroundMusic('mysterious'); 
+                storyHistory.push(newScene); 
+                renderScene(newScene, 'ai', null); 
+            } catch (error) { 
+                console.error("Error generating story with AI:", error); 
+                storyContainer.innerHTML = `<div class="p-4 bg-red-500/80 rounded-lg border border-red-400 text-center fade-in-up"><p class="text-xl mb-2 font-bold">Oops, Ada Masalah!</p><p>Maaf, AI sepertinya sedang istirahat. Coba lagi nanti ya!</p><button class="mt-4 bg-white/20 hover:bg-white/40 text-white font-bold py-2 px-4 rounded-lg" onclick="renderStartScreen()">Kembali</button></div>`; 
+            } 
+        }
+
+        // --- FUNGSI ILUSTRASI AI YANG DIPERBARUI DAN ANDAL ---
+        async function generateAiIllustration(narration) {
+            const imageContainer = document.getElementById('image-container'); 
+            const imageElement = document.getElementById('scene-illustration'); 
+            const generateBtn = document.getElementById('generate-image-btn'); 
+            const choiceButtons = document.querySelectorAll('.choice-btn');
+
+            if (!imageContainer || !generateBtn || !imageElement) return; 
+
+            // Nonaktifkan semua tombol interaktif untuk mencegah aksi ganda
+            generateBtn.disabled = true; 
+            choiceButtons.forEach(btn => btn.disabled = true);
+            generateBtn.innerHTML = `<div class="spinner" style="width:20px; height:20px; border-width: 2px;"></div><span>AI sedang melukis...</span>`; 
+            
+            const overlay = document.createElement('div'); 
+            overlay.className = 'image-loading-overlay'; 
+            overlay.innerHTML = `<div class="spinner"></div>`; 
+            imageContainer.appendChild(overlay); 
+
+            if (API_KEY === "MASUKKAN_API_KEY_ANDA_DI_SINI") { overlay.innerHTML = `<p class="text-white text-center font-bold">API Key belum diatur!</p>`; generateBtn.disabled = false; generateBtn.innerHTML = `🎨 Gagal, Coba Lagi`; choiceButtons.forEach(btn => btn.disabled = false); setTimeout(() => overlay.remove(), 2000); return; }
+
+            // Menggunakan model 'gemini-1.5-pro' dengan instruksi untuk menghasilkan gambar.
+            // Ini adalah cara paling andal karena menggunakan izin yang sama dengan API teks yang sudah berfungsi.
+            const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${API_KEY}`;
+            const prompt = `A beautiful digital painting illustration for an ancient Indonesian folklore story, epic fantasy style, dramatic lighting, high quality. The scene depicts: "${narration}"`;
+            
+            // Payload disesuaikan untuk meminta output berupa gambar (image/png).
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "image/png" }
+            };
+
+            try { 
+                const response = await fetch(imageApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); 
+                if (!response.ok) { const errorBody = await response.json(); console.error("Image API Error:", errorBody); throw new Error(`Image API request failed: ${response.status}`); }
+                const result = await response.json(); 
+                const base64String = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                if (base64String) { 
+                    imageElement.style.opacity = 0; 
+                    setTimeout(() => { 
+                        imageElement.src = `data:image/png;base64,${base64String}`; 
+                        imageElement.style.opacity = 1; 
+                        overlay.remove(); 
+                        generateBtn.style.display = 'none';
+                        choiceButtons.forEach(btn => btn.disabled = false);
+                    }, 500); 
+                } else { 
+                    console.error("No image data in API response (inlineData not found):", result);
+                    throw new Error("No image data in API response."); 
+                } 
+            } catch (error) { 
+                console.error("Error generating AI illustration:", error); 
+                overlay.remove(); 
+                generateBtn.disabled = false; 
+                generateBtn.innerHTML = `🎨 Gagal, Coba Lagi`; 
+                choiceButtons.forEach(btn => btn.disabled = false);
+            } 
+        }
+        
+        function showInfo(title, description) {
+            playChoiceSound();
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-description').textContent = description;
+            document.getElementById('info-modal').classList.add('active');
+        }
+        
+        function showMapInfo(storyKey, locationKey) {
+            const locationGroup = document.getElementById(`map-${locationKey}-group`);
+            if (locationGroup && locationGroup.classList.contains('active')) {
+                const info = mapInfoData[storyKey][locationKey];
+                if (info) {
+                    showInfo(info.title, info.description);
+                }
+            }
+        }
+
+        function hideInfo() {
+            // Tidak perlu menghentikan audio di sini karena modal hanya overlay
+            document.getElementById('info-modal').classList.remove('active');
+        }
+
+        // --- Fitur Galeri ---
+        function loadProgress() {
+            return JSON.parse(localStorage.getItem('storyGalleryProgress')) || {};
+        }
+
+        function saveProgress(storyKey, endingKey) {
+            const progress = loadProgress();
+            if (!progress[storyKey]) {
+                progress[storyKey] = [];
+            }
+            if (!progress[storyKey].includes(endingKey)) {
+                progress[storyKey].push(endingKey);
+            }
+            localStorage.setItem('storyGalleryProgress', JSON.stringify(progress));
+        }
+
+        function renderGallery() {
+            playChoiceSound();
+            mapContainer.style.display = 'none';
+            storyContainer.classList.remove('lg:col-span-2');
+            storyContainer.classList.add('lg:col-span-3');
+
+            const progress = loadProgress();
+            let galleryHtml = `<div class="text-center fade-in-up">
+                <h1 class="text-4xl md:text-6xl font-black text-slate-800" style="font-family: 'Nunito', sans-serif;">Galeri Cerita</h1>
+                <p class="text-xl text-slate-600 mt-4 mb-8">Lihat kembali semua akhir cerita yang telah kamu buka!</p>
+                <div class="space-y-6 text-left">`;
+
+            for (const storyKey in allClassicStories) {
+                const story = allClassicStories[storyKey];
+                galleryHtml += `<div>
+                    <h2 class="text-2xl font-bold text-slate-700 mb-2">${story.title}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+                
+                const unlockedEndings = progress[storyKey] || [];
+
+                for (const sceneKey in story) {
+                    if (story[sceneKey].isEnd) {
+                        const ending = story[sceneKey];
+                        if (unlockedEndings.includes(sceneKey)) {
+                            galleryHtml += `<button class="p-3 bg-green-100 text-green-800 rounded-lg text-left font-semibold hover:bg-green-200" onclick="renderEndingScene('${storyKey}', '${sceneKey}')">✔️ ${ending.endingTitle}</button>`;
+                        } else {
+                            galleryHtml += `<div class="p-3 bg-slate-200 text-slate-500 rounded-lg text-left font-semibold opacity-70">🔒 Terkunci</div>`;
+                        }
+                    }
+                }
+                galleryHtml += `</div></div>`;
+            }
+
+            galleryHtml += `</div><button class="mt-8 w-full btn btn-pink" onclick="renderStartScreen()">Kembali ke Menu Utama</button></div>`;
+            storyContainer.innerHTML = galleryHtml;
+        }
+
+        function renderEndingScene(storyKey, endingKey) {
+            speechSynthesis.cancel();
+            playChoiceSound();
+            const sceneData = allClassicStories[storyKey][endingKey];
+            storyContainer.innerHTML = `
+                <div class="fade-in-up">
+                    <div class="relative mb-6 rounded-2xl overflow-hidden shadow-lg border-2 border-white/20">
+                        <img src="${sceneData.illustration}" alt="Ilustrasi cerita" class="w-full h-auto object-cover">
+                    </div>
+                    <h2 class="text-3xl font-black text-center mb-4 text-slate-800">${sceneData.endingTitle}</h2>
+                    <p class="mb-6 story-text-container text-lg md:text-xl leading-relaxed text-slate-700">${sceneData.narration}</p>
+                    <button class="w-full btn btn-orange" onclick="renderGallery()">Kembali ke Galeri</button>
+                </div>
+            `;
+        }
+
+        window.onload = () => { renderStartScreen(); };
+    </script>
+</body>
+</html>
